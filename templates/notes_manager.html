@@ -1,0 +1,160 @@
+{% extends "man-base.html" %} {% block title %}My Notes{% endblock %} {% block
+content %}
+
+<div class="w-full h-full flex flex-wrap justify-start p-2 gap-2 mt-4">
+  {% for note in notes %}
+  <div
+    class="note-card w-[24%] h-56 bg-gray-800 text-gray-200 rounded-md p-4 cursor-pointer hover:bg-gray-700 transition flex flex-col"
+    data-id="{{ note.id }}"
+    data-title="{{ note.title }}"
+    data-content="{{ note.content or '' }}"
+  >
+    <h2 class="text-orange-400 text-sm font-mono truncate">{{ note.title }}</h2>
+
+    <p class="text-sm mt-2 flex-1 overflow-hidden text-gray-300">
+      {{ note.content[:120] }}{% if note.content and note.content|length > 120
+      %}...{% endif %}
+    </p>
+
+    <p class="text-xs text-gray-500 mt-auto text-right">Tap to edit</p>
+  </div>
+  {% endfor %}
+
+  <!-- Add Note Card -->
+  <div
+    id="addNoteCard"
+    class="w-[24%] bg-gray-800 rounded-md p-4 hover:bg-gray-700 transition flex flex-col items-center justify-center cursor-pointer"
+  >
+    <h1 class="text-4xl">+</h1>
+    <h2>Add Note</h2>
+  </div>
+</div>
+
+<!-- Note Modal -->
+<div
+  id="noteModal"
+  class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50"
+>
+  <div
+    class="bg-gray-900 border border-gray-700 text-gray-200 w-[600px] rounded-xl p-8 shadow-2xl"
+  >
+    <h2 class="text-2xl font-semibold mb-6" id="modalHeader">Edit Note</h2>
+
+    <!-- Title -->
+    <div class="mb-4">
+      <label class="block text-sm text-gray-400 mb-1">Title</label>
+      <input
+        id="modalTitle"
+        type="text"
+        class="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-600/30"
+      />
+    </div>
+
+    <!-- Content -->
+    <div class="mb-6">
+      <label class="block text-sm text-gray-400 mb-1">Content</label>
+      <textarea
+        id="modalContent"
+        rows="7"
+        class="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-teal-600/30"
+      ></textarea>
+    </div>
+
+    <!-- Buttons -->
+    <div class="flex justify-between items-center">
+      <button id="deleteNote" class="text-red-500 text-sm hover:underline">
+        Delete
+      </button>
+
+      <div class="flex gap-3">
+        <button
+          id="closeModal"
+          class="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition"
+        >
+          Cancel
+        </button>
+        <button
+          id="saveNote"
+          class="px-4 py-2 bg-orange-600 text-black rounded-lg hover:bg-orange-500 transition"
+        >
+          Save
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const modal = document.getElementById("noteModal");
+  const modalTitle = document.getElementById("modalTitle");
+  const modalContent = document.getElementById("modalContent");
+  const modalHeader = document.getElementById("modalHeader");
+  const addNoteCard = document.getElementById("addNoteCard");
+  const closeModalBtn = document.getElementById("closeModal");
+  const deleteBtn = document.getElementById("deleteNote");
+
+  let currentNoteId = null;
+
+  function openModal(note = null) {
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+
+    if (note) {
+      modalHeader.innerText = "Edit Note";
+      modalTitle.value = note.title;
+      modalContent.value = note.content;
+      currentNoteId = note.id;
+      deleteBtn.classList.remove("hidden");
+    } else {
+      modalHeader.innerText = "Add Note";
+      modalTitle.value = "";
+      modalContent.value = "";
+      currentNoteId = null;
+      deleteBtn.classList.add("hidden");
+    }
+  }
+
+  document.querySelectorAll(".note-card").forEach((card) => {
+    card.addEventListener("click", () => {
+      openModal({
+        id: card.dataset.id,
+        title: card.dataset.title,
+        content: card.dataset.content,
+      });
+    });
+  });
+
+  addNoteCard.addEventListener("click", () => openModal());
+
+  closeModalBtn.addEventListener("click", () => {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+  });
+
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) {
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    }
+  });
+
+  document.getElementById("saveNote").addEventListener("click", () => {
+    const formData = new URLSearchParams();
+    formData.append("note_id", currentNoteId || "new");
+    formData.append("title", modalTitle.value);
+    formData.append("content", modalContent.value);
+
+    fetch("/notes/save", { method: "POST", body: formData })
+      .then((res) => res.json())
+      .then(() => location.reload());
+  });
+
+  deleteBtn.addEventListener("click", () => {
+    if (!currentNoteId) return;
+    fetch(`/notes/delete/${currentNoteId}`, { method: "POST" })
+      .then((res) => res.json())
+      .then(() => location.reload());
+  });
+</script>
+
+{% endblock %}

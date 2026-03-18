@@ -1,0 +1,43 @@
+{% extends "group_base.html" %} {% block title %}Group | Tasks{% endblock %} {%
+block content %}
+<div id="tasksTab" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+  {% if tasks %} {% for task in tasks %}
+  <div
+    class="rounded-xl p-4 hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer border-l-4"
+    style="
+          border-left-color: {% if task.energy_required == 1 %}#16a34a{% elif task.energy_required == 2 %}#f97316{% else %}#ef4444{% endif %};
+          background-color: #1f1f1f;
+        "
+  >
+    <h3 class="text-white font-semibold">{{ task.name }}</h3>
+    <p class="text-xs text-gray-400 mt-1">
+      {{ task.description or "No description" }}
+    </p>
+
+    <div class="flex justify-between items-center mt-3 text-xs text-gray-400">
+      <span>
+        ⏰ Due: {% if task.due_date %} {{ task.due_date.strftime('%b %d, %Y') }}
+        {% else %} No due date {% endif %}
+      </span>
+
+      <button
+        class="mt-3 text-xs text-orange-400 hover:underline"
+        onclick='editTask({{ {
+              "id": task.id,
+              "name": task.name,
+              "description": task.description,
+              "energy_required": task.energy_required,
+              "due_date": task.due_date.strftime("%Y-%m-%d") if task.due_date else ""
+            } | tojson }})'
+      >
+        Edit
+      </button>
+    </div>
+  </div>
+  {% endfor %} {% else %}
+  <p class="text-gray-400 col-span-full text-center mt-6">
+    No tasks in this group yet.
+  </p>
+  {% endif %}
+</div>
+{% endblock %}

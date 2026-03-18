@@ -1,0 +1,207 @@
+{% extends "man-base.html" %} {% block title %}My Tasks{% endblock %} {% block
+content %}
+
+<div class="w-full h-full flex flex-wrap justify-start p-2 gap-2 mt-4">
+  {% for task in tasks %} {% set done_count = task.subtasks |
+  selectattr("is_done") | list | length %} {% set total_count = task.subtasks |
+  length %}
+
+  <div
+    class="task-card w-[24%] bg-gray-800 text-gray-200 rounded-md p-4 cursor-pointer hover:bg-gray-700 transition flex flex-col relative"
+    data-task='{
+      "id":"{{ task.id }}",
+      "name":"{{ task.name|e }}",
+      "description":"{{ task.description|default("", true)|e }}",
+      "energy":"{{ task.energy_required }}",
+      "due":"{{ task.due_date.strftime("%Y-%m-%d") if task.due_date else "" }}",
+      "subtasks":[
+        {% for st in task.subtasks %}
+        {"name":"{{ st.name|e }}","done":{{ "true" if st.is_done else "false" }} }{% if not loop.last %},{% endif %}
+        {% endfor %}
+      ]
+    }'
+  >
+    <span
+      class="absolute top-2 right-2 w-3 h-3 rounded-full"
+      style="background-color:
+      {% if task.energy_required == 1 %}#16a34a
+      {% elif task.energy_required == 2 %}#f59e0b
+      {% else %}#dc2626{% endif %};"
+    ></span>
+
+    <h2 class="text-orange-400 text-sm font-mono">{{ task.name }}</h2>
+    <p class="text-xs text-gray-400 mt-1">
+      {{ done_count }} / {{ total_count }} subtasks
+    </p>
+    <p class="text-xs text-gray-500 mt-auto">
+      Due: {{ task.due_date.strftime("%Y-%m-%d") if task.due_date else "—" }}
+    </p>
+  </div>
+  {% endfor %}
+
+  <!-- Add Task Card -->
+  <div
+    id="addTaskCard"
+    class="w-[24%] bg-gray-800 rounded-md p-4 hover:bg-gray-700 transition flex flex-col items-center justify-center cursor-pointer"
+  >
+    <h1 class="text-4xl">+</h1>
+    <h2>Add Task</h2>
+  </div>
+</div>
+
+<!-- TASK MODAL -->
+<div
+  id="taskModal"
+  class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50"
+>
+  <div
+    class="bg-gray-900 border border-gray-700 text-gray-200 w-[600px] rounded-xl p-8"
+  >
+    <h2 id="modalHeader" class="text-xl mb-4">Task</h2>
+    <input id="taskId" type="hidden" />
+
+    <input
+      id="modalTitle"
+      placeholder="Title"
+      class="w-full p-2 bg-gray-800 border border-gray-700 rounded mb-3"
+    />
+    <textarea
+      id="modalDescription"
+      rows="3"
+      placeholder="Description"
+      class="w-full p-2 bg-gray-800 border border-gray-700 rounded mb-3"
+    ></textarea>
+
+    <div class="flex gap-2 mb-3">
+      <input
+        id="modalDue"
+        type="date"
+        class="flex-1 p-2 bg-gray-800 border border-gray-700 rounded"
+      />
+      <select
+        id="modalEnergy"
+        class="p-2 bg-gray-800 border border-gray-700 rounded"
+      >
+        <option value="1">Low</option>
+        <option value="2">Med</option>
+        <option value="3">High</option>
+      </select>
+    </div>
+
+    <!-- Subtasks -->
+    <div id="subtaskContainer" class="space-y-2 mb-3"></div>
+    <button id="addSubtaskBtn" class="text-xs text-blue-400">
+      + Add Subtask
+    </button>
+
+    <div class="flex justify-between mt-6">
+      <div class="flex gap-2">
+        <button id="deleteTaskBtn" class="px-3 py-1 text-xs bg-red-600 rounded">
+          Delete
+        </button>
+        <button id="doneTaskBtn" class="px-3 py-1 text-xs bg-teal-600 rounded">
+          Done
+        </button>
+      </div>
+      <div class="flex gap-2">
+        <button id="closeModal" class="px-3 py-1 bg-gray-700 rounded">
+          Cancel
+        </button>
+        <button id="saveTask" class="px-3 py-1 bg-orange-600 rounded">
+          Save
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const modal = document.getElementById("taskModal");
+  const taskIdInput = document.getElementById("taskId");
+  const titleInput = document.getElementById("modalTitle");
+  const descInput = document.getElementById("modalDescription");
+  const energyInput = document.getElementById("modalEnergy");
+  const dueInput = document.getElementById("modalDue");
+  const subtaskBox = document.getElementById("subtaskContainer");
+
+  function addSubtask(name = "", done = false) {
+    const row = document.createElement("div");
+    row.className = "flex items-center gap-2";
+    row.innerHTML = `
+      <input type="checkbox" ${done ? "checked" : ""}>
+      <input class="flex-1 p-1 bg-gray-800 border border-gray-700 rounded text-sm" value="${name}">
+      <button class="text-red-400 text-xs">x</button>
+    `;
+    row.querySelector("button").onclick = () => row.remove();
+    subtaskBox.appendChild(row);
+  }
+
+  document.querySelectorAll(".task-card").forEach((card) => {
+    card.onclick = () => {
+      const data = JSON.parse(card.dataset.task);
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+
+      taskIdInput.value = data.id;
+      titleInput.value = data.name;
+      descInput.value = data.description;
+      energyInput.value = data.energy;
+      dueInput.value = data.due;
+
+      subtaskBox.innerHTML = "";
+      data.subtasks.forEach((st) => addSubtask(st.name, st.done));
+    };
+  });
+
+  document.getElementById("addTaskCard").onclick = () => {
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+    taskIdInput.value = "new";
+    titleInput.value = "";
+    descInput.value = "";
+    energyInput.value = "2";
+    dueInput.value = "";
+    subtaskBox.innerHTML = "";
+  };
+
+  document.getElementById("addSubtaskBtn").onclick = () => addSubtask();
+
+  document.getElementById("closeModal").onclick = () =>
+    modal.classList.add("hidden");
+
+  document.getElementById("saveTask").onclick = () => {
+    const form = new FormData();
+    form.append("task_id", taskIdInput.value);
+    form.append("task_name", titleInput.value);
+    form.append("task_description", descInput.value);
+    form.append("energy_required", energyInput.value);
+    form.append("due_date", dueInput.value);
+
+    subtaskBox.querySelectorAll("div").forEach((row) => {
+      form.append("subtask_names[]", row.children[1].value);
+      form.append("subtask_done[]", row.children[0].checked ? "1" : "0");
+    });
+
+    fetch("/tasks/save", { method: "POST", body: form }).then(() =>
+      location.reload()
+    );
+  };
+
+  document.getElementById("deleteTaskBtn").onclick = () => {
+    const id = taskIdInput.value;
+    if (id !== "new")
+      fetch(`/tasks/delete/${id}`, { method: "POST" }).then(() =>
+        location.reload()
+      );
+  };
+
+  document.getElementById("doneTaskBtn").onclick = () => {
+    const id = taskIdInput.value;
+    if (id !== "new")
+      fetch(`/tasks/mark_done/${id}`, { method: "POST" }).then(() =>
+        location.reload()
+      );
+  };
+</script>
+
+{% endblock %}

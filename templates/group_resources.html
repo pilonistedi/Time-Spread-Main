@@ -1,0 +1,39 @@
+{% extends "group_base.html" %} {% block title %}Group | Resources{% endblock %}
+{% block content %}
+<div
+  id="resourcesTab"
+  class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+>
+  {% for resource in resources %} {% if resource.type == "link" %}
+  <a
+    href="{{ resource.url }}"
+    target="_blank"
+    class="bg-gray-900 rounded-xl p-4 border-l-4 border-blue-500 hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer"
+  >
+    <h3 class="text-white font-semibold">{{ resource.title }}</h3>
+    <div class="flex gap-2 items-center mt-2 text-xs text-gray-400">
+      <span>🔗 {{ resource.url }}</span>
+      <span class="ml-auto"
+        >Added: {{ resource.created_at.strftime('%b %d') }}</span
+      >
+    </div>
+  </a>
+  {% elif resource.type == "file" %} {% for f in resource.files %}
+  <a
+    href="{{ url_for('static', filename='uploads/resources/' ~ resource.group_id ~ '/' ~ f.filename) }}"
+    target="_blank"
+    class="bg-gray-900 rounded-xl p-4 border-l-4 border-green-500 hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer"
+  >
+    <h3 class="text-white font-semibold">{{ resource.title }}</h3>
+    <div class="flex gap-2 items-center mt-2 text-xs text-gray-400">
+      <span>📄 {{ f.original_name }}</span>
+      <span class="ml-auto"
+        >Added: {{ resource.created_at.strftime('%b %d') }}</span
+      >
+    </div>
+  </a>
+  {% endfor %} {% endif %} {% else %}
+  <p class="text-gray-400 col-span-full">No resources added yet.</p>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,220 @@
+{% extends "man-base.html" %} {% block title %}My Projects{% endblock %} {%
+block content %}
+
+<div class="w-full h-full flex flex-wrap justify-start p-2 gap-2 mt-4">
+  <!-- PROJECT CARDS -->
+  {% for project in projects %}
+  <div
+    class="project-card w-[24%] bg-gray-800 text-gray-200 rounded-md p-4 cursor-pointer hover:bg-gray-700 transition flex flex-col relative"
+    data-id="{{ project.id }}"
+    data-title="{{ project.title }}"
+    data-description="{{ project.description }}"
+    data-due="{{ project.due_date.strftime('%Y-%m-%d') if project.due_date else '' }}"
+  >
+    <h2 class="text-orange-400 text-sm font-mono">{{ project.title }}</h2>
+    <div class="flex-1 overflow-y-auto mb-2 space-y-1">
+      {% for task in project.tasks %}
+      <p class="line-clamp-1 text-xs mt-1 ml-4 flex-1">{{ task.name }}</p>
+      {% endfor %}
+    </div>
+    <p class="text-sm text-center text-gray-600 mt-auto">
+      Due: {{ project.due_date.strftime('%Y-%m-%d') if project.due_date else
+      'N/A' }}
+    </p>
+  </div>
+  {% endfor %}
+
+  <!-- ADD PROJECT CARD -->
+  <div
+    class="w-[24%] bg-gray-800 rounded-md p-4 hover:bg-gray-700 transition flex flex-col items-center justify-center cursor-pointer"
+    id="addProjectBtn"
+  >
+    <h1 class="text-4xl">+</h1>
+    <h2>Add Project</h2>
+  </div>
+</div>
+
+<!-- PROJECT MODAL -->
+<div
+  id="projectModal"
+  class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50"
+>
+  <div
+    class="bg-black border border-gray-700 text-gray-200 w-[600px] rounded-xl p-8 shadow-2xl max-h-[90vh] overflow-y-auto"
+  >
+    <h2 class="text-2xl font-semibold mb-6 text-gray-100" id="modalTitleHeader">
+      Edit Project
+    </h2>
+
+    <div class="mb-5">
+      <label class="block text-sm text-gray-400 mb-1">Title</label>
+      <input
+        id="modalTitle"
+        type="text"
+        class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg"
+      />
+    </div>
+
+    <div class="mb-5">
+      <label class="block text-sm text-gray-400 mb-1">Due Date</label>
+      <input
+        id="modalDue"
+        type="date"
+        class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg"
+      />
+    </div>
+
+    <div class="mb-5">
+      <label class="block text-sm text-gray-400 mb-1">Description</label>
+      <textarea
+        id="modalDescription"
+        rows="4"
+        class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg resize-none"
+      ></textarea>
+    </div>
+
+    <div id="modalTasks" class="mb-4 space-y-2"></div>
+
+    <button
+      id="addTaskBtn"
+      class="mb-4 px-3 py-2 bg-gray-800 text-gray-200 rounded hover:bg-gray-700 transition"
+    >
+      Add Task
+    </button>
+
+    <div class="flex justify-between items-center">
+      <button id="deleteProject" class="px-3 py-2 text-red-500">
+        Delete Project
+      </button>
+
+      <div class="flex justify-end gap-3">
+        <button
+          id="closeModal"
+          class="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition"
+        >
+          Cancel
+        </button>
+        <button
+          id="saveProject"
+          class="px-4 py-2 bg-orange-600 text-black rounded-lg hover:bg-orange-500 transition"
+        >
+          Save
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const modal = document.getElementById("projectModal");
+  const modalTitle = document.getElementById("modalTitle");
+  const modalDescription = document.getElementById("modalDescription");
+  const modalDue = document.getElementById("modalDue");
+  const modalTasks = document.getElementById("modalTasks");
+  const modalHeader = document.getElementById("modalTitleHeader");
+
+  let currentProjectId = null;
+
+  function openModal() {
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+  }
+
+  function closeModal() {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+  }
+
+  function addTaskToModal(name = "", done = false) {
+    const div = document.createElement("div");
+    div.className = "flex items-center gap-2";
+    div.innerHTML = `
+      <input type="checkbox" ${done ? "checked" : ""}>
+      <input type="text" class="flex-1 p-2 bg-gray-900 border border-gray-700 rounded" value="${name}">
+      <button class="px-2 text-red-400 hover:text-red-500">x</button>
+    `;
+    div.querySelector("button").onclick = () => div.remove();
+    modalTasks.appendChild(div);
+  }
+
+  // EDIT PROJECT
+  document.querySelectorAll(".project-card").forEach((card) => {
+    card.addEventListener("click", () => {
+      currentProjectId = card.dataset.id;
+      modalHeader.innerText = "Edit Project";
+
+      modalTitle.value = card.dataset.title;
+      modalDescription.value = card.dataset.description;
+      modalDue.value = card.dataset.due;
+
+      modalTasks.innerHTML = "";
+
+      fetch(`/projects/${currentProjectId}/tasks`)
+        .then((res) => res.json())
+        .then((data) => {
+          data.tasks.forEach((t) => addTaskToModal(t.name, t.done));
+        });
+
+      openModal();
+    });
+  });
+
+  // ADD PROJECT
+  document.getElementById("addProjectBtn").addEventListener("click", () => {
+    currentProjectId = "new";
+    modalHeader.innerText = "Add Project";
+
+    modalTitle.value = "";
+    modalDescription.value = "";
+    modalDue.value = "";
+    modalTasks.innerHTML = "";
+
+    openModal();
+  });
+
+  // ADD TASK ROW
+  document
+    .getElementById("addTaskBtn")
+    .addEventListener("click", () => addTaskToModal());
+
+  // CLOSE MODAL
+  document.getElementById("closeModal").addEventListener("click", closeModal);
+
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  // SAVE PROJECT
+  document.getElementById("saveProject").addEventListener("click", () => {
+    const tasks = [];
+    modalTasks.querySelectorAll("div").forEach((div) => {
+      const input = div.querySelector("input[type=text]");
+      const checkbox = div.querySelector("input[type=checkbox]");
+      tasks.push({ name: input.value, delete: checkbox.checked });
+    });
+
+    fetch("/projects/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        project_id: currentProjectId,
+        title: modalTitle.value,
+        description: modalDescription.value,
+        due_date: modalDue.value,
+        tasks,
+      }),
+    }).then(() => location.reload());
+  });
+
+  // DELETE PROJECT
+  document.getElementById("deleteProject").addEventListener("click", () => {
+    if (!currentProjectId || currentProjectId === "new") return;
+    if (!confirm("Delete this project?")) return;
+
+    fetch(`/projects/delete/${currentProjectId}`, { method: "POST" }).then(() =>
+      location.reload()
+    );
+  });
+</script>
+
+{% endblock %}

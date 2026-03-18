@@ -1,0 +1,28 @@
+{% extends "group_base.html" %} {% block title %}{{ group.name }} | Projects{%
+endblock %} {% block content %}
+<div
+  id="projectsTab"
+  class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+>
+  {% for project in projects %}
+  <div
+    class="bg-gray-900 rounded-xl p-4 border-l-4 border-purple-500 hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer"
+  >
+    <h3 class="text-white font-semibold">{{ project.title }}</h3>
+    <p class="text-xs text-gray-400 mt-1">
+      {{ project.description[:80] }}{% if project.description|length > 80
+      %}...{% endif %}
+    </p>
+    <div class="flex justify-between items-center mt-3 text-xs text-gray-400">
+      <span>📦 Project</span>
+      <span>
+        {% if project.due_date %} Due: {{ project.due_date.strftime('%b %d, %Y')
+        }} {% else %} No due date {% endif %}
+      </span>
+    </div>
+  </div>
+  {% else %}
+  <p class="text-gray-400 col-span-full">No projects in this group yet.</p>
+  {% endfor %}
+</div>
+{% endblock %}

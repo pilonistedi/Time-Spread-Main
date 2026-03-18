@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}{% endblock %}</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='output.css') }}"
+    />
+  </head>
+  <body class="bg-black text-gray-300 min-h-screen flex flex-col">
+    <!-- ===== Header ===== -->
+    <header
+      class="w-full px-5 py-3 flex justify-between items-center border-b border-gray-800"
+    >
+      <h2 class="text-sm font-mono text-orange-400 cursor-pointer">
+        &copy; Time Spread
+      </h2>
+
+      <nav class="flex gap-5 text-sm">
+        <a
+          href="{{ url_for('dashboard') }}"
+          class="text-gray-400 hover:text-orange-400"
+          >Dashboard</a
+        >
+        <a href="{{ url_for('groups') }}" class="text-orange-400">Groups</a>
+      </nav>
+    </header>
+
+    <!-- ===== Group Info + Actions ===== -->
+    <section
+      class="px-6 py-4 border-b border-gray-800 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3"
+    >
+      <div>
+        <h1 class="text-xl font-bold text-white">{{ group.name }}</h1>
+        <p class="text-xs text-gray-400 mt-1">
+          {{ group.description or "No description" }}
+        </p>
+      </div>
+
+      <!-- Quick Add Buttons -->
+      <div class="flex gap-3 flex-wrap">
+        <button
+          id="openTaskModal"
+          class="px-3 py-1 text-sm border border-gray-700 rounded-md text-orange-500 hover:bg-gray-800 transition"
+        >
+          + Add Task
+        </button>
+        <button
+          id="openNoteModal"
+          class="px-3 py-1 text-sm border border-gray-700 rounded-md text-orange-500 hover:bg-gray-800 transition"
+        >
+          + Add Note
+        </button>
+        <button
+          id="openProjectModal"
+          class="px-3 py-1 text-sm border border-gray-700 rounded-md text-orange-500 hover:bg-gray-800 transition"
+        >
+          + Add Project
+        </button>
+        <button
+          id="openResourceModal"
+          class="px-3 py-1 text-sm border border-gray-700 rounded-md text-orange-500 hover:bg-gray-800 transition"
+        >
+          + Add Resource
+        </button>
+      </div>
+    </section>
+    <!-- ===== Tabs ===== -->
+    <section class="px-6 py-3 border-b border-gray-800">
+      <div class="flex gap-4 text-sm">
+        {% set base = "tab-btn text-gray-400 hover:text-orange-400 pb-1 flex
+        items-center gap-1" %} {% set active = "text-white border-b-2
+        border-orange-500" %}
+
+        <!-- Tasks Tab -->
+        <a
+          href="{{ url_for('group_tasks', group_id=group.id) }}"
+          class="{{ base }} {% if current == 'group_tasks' %}{{ active }}{% endif %}"
+        >
+          ✅ Tasks
+          <span class="text-gray-500 text-xs bg-gray-800 px-1 rounded"
+            >{{task_count}}</span
+          >
+        </a>
+
+        <!-- Notes Tab -->
+        <a
+          href="{{ url_for('group_notes', group_id=group.id) }}"
+          class="{{ base }} {% if current == 'group_notes' %}{{ active }}{% endif %}"
+        >
+          📝 Notes
+          <span class="text-gray-500 text-xs bg-gray-800 px-1 rounded"
+            >{{note_count}}</span
+          >
+        </a>
+
+        <!-- Projects Tab -->
+        <a
+          href="{{ url_for('group_projects', group_id=group.id) }}"
+          class="{{ base }} {% if current == 'group_projects' %}{{ active }}{% endif %}"
+        >
+          📦 Projects
+          <span class="text-gray-500 text-xs bg-gray-800 px-1 rounded"
+            >{{project_count}}</span
+          >
+        </a>
+
+        <!-- Resources Tab -->
+        <a
+          href="{{ url_for('group_resources', group_id=group.id) }}"
+          class="{{ base }} {% if current == 'group_resources' %}{{ active }}{% endif %}"
+        >
+          📄 Resources
+          <span class="text-gray-500 text-xs bg-gray-800 px-1 rounded"
+            >{{resource_count}}</span
+          >
+        </a>
+      </div>
+    </section>
+
+    <!-- ===== Content Area ===== -->
+    <main class="flex-1 px-6 py-4 overflow-y-auto">
+      {% block content %}{% endblock %}
+    </main>
+
+    <!-- ===== Modals ===== -->
+    <!-- TASK MODAL -->
+    <div
+      id="taskModal"
+      class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center z-50"
+    >
+      <form
+        id="taskForm"
+        method="POST"
+        action="{{ url_for('group_tasks', group_id=group.id) }}"
+        class="bg-gray-900 w-full max-w-md rounded-xl p-6 border border-gray-700"
+      >
+        <h3 class="text-lg font-semibold text-white mb-4">Create Task</h3>
+        <input type="hidden" name="task_id" id="task_id" value="new" />
+
+        <input
+          type="text"
+          name="title"
+          placeholder="Task Name"
+          required
+          class="mb-3 w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white focus:border-orange-500"
+        />
+
+        <input
+          type="text"
+          name="description"
+          placeholder="Description"
+          class="mb-3 w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white focus:border-orange-500"
+        />
+
+        <select
+          name="energy"
+          required
+          class="mb-3 w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white focus:border-orange-500"
+        >
+          <option value="">Select Energy</option>
+          <option value="1">LOW</option>
+          <option value="2">MED</option>
+          <option value="3">HIGH</option>
+        </select>
+
+        <input
+          type="date"
+          name="due_date"
+          class="mb-3 w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white focus:border-orange-500"
+        />
+
+        <div class="flex justify-end gap-3">
+          <button
+            type="button"
+            class="closeBtn px-4 py-2 text-gray-400 hover:text-white"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="px-4 py-2 bg-orange-500 rounded text-black hover:bg-orange-400 transition"
+          >
+            save Task
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- NOTE MODAL -->
+    <div
+      id="noteModal"
+      class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center z-50"
+    >
+      <form
+        method="POST"
+        action="{{ url_for('group_notes', group_id=group.id) }}"
+        class="bg-gray-900 w-full max-w-md rounded-xl p-6 border border-gray-700"
+      >
+        <h3 class="text-lg font-semibold text-white mb-4">Create Note</h3>
+
+        <input
+          type="text"
+          name="title"
+          placeholder="Title"
+          required
+          class="mb-3 w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white focus:border-orange-500"
+        />
+
+        <textarea
+          name="content"
+          placeholder="Content"
+          required
+          class="mb-3 w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white focus:border-orange-500 h-24"
+        ></textarea>
+
+        <div class="flex justify-end gap-3">
+          <button
+            type="button"
+            class="closeBtn px-4 py-2 text-gray-400 hover:text-white"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="px-4 py-2 bg-orange-500 rounded text-black hover:bg-orange-400 transition"
+          >
+            save Note
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- PROJECT MODAL -->
+    <div
+      id="projectModal"
+      class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center z-50 overflow-y-auto"
+    >
+      <form
+        method="POST"
+        action="{{ url_for('group_projects', group_id=group.id) }}"
+        class="bg-gray-900 w-full max-w-md rounded-xl p-6 border border-gray-700"
+      >
+        <h3 class="text-lg font-semibold text-white mb-4">Create Project</h3>
+
+        <input
+          type="text"
+          name="title"
+          placeholder="Project Title"
+          required
+          class="mb-3 w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white focus:border-orange-500"
+        />
+
+        <input
+          type="text"
+          name="description"
+          placeholder="Description"
+          class="mb-3 w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white focus:border-orange-500"
+        />
+
+        <input
+          type="date"
+          name="deadline"
+          class="mb-3 w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white focus:border-orange-500"
+        />
+
+        <!-- Inline Tasks -->
+        <div class="mb-3">
+          <h4 class="text-white font-semibold mb-2">Tasks</h4>
+          <div id="projectTasksContainer" class="flex flex-col gap-2"></div>
+
+          <button
+            type="button"
+            id="addProjectTask"
+            class="px-2 py-1 text-sm border border-gray-700 rounded-md text-orange-500 hover:bg-gray-800 transition mt-2"
+          >
+            + Add Task
+          </button>
+        </div>
+
+        <div class="flex justify-end gap-3 mt-4">
+          <button
+            type="button"
+            class="closeBtn px-4 py-2 text-gray-400 hover:text-white"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="px-4 py-2 bg-orange-500 rounded text-black hover:bg-orange-400 transition"
+          >
+            save Project
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- RESOURCE MODAL -->
+    <form
+      id="resourceModal"
+      method="POST"
+      action="{{ url_for('group_resources', group_id=group.id) }}"
+      enctype="multipart/form-data"
+      class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center z-50 overflow-y-auto"
+    >
+      <div
+        class="bg-gray-900 w-full max-w-md rounded-xl p-6 border border-gray-700"
+      >
+        <h3 class="text-lg font-semibold text-white mb-4">Add Resource</h3>
+
+        <input
+          type="text"
+          name="title"
+          placeholder="Resource Title"
+          class="mb-3 w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white focus:border-orange-500"
+          required
+        />
+
+        <!-- Single Link -->
+        <div class="mb-3">
+          <h4 class="text-white font-semibold mb-2">Link</h4>
+          <input
+            type="url"
+            name="link"
+            placeholder="https://example.com"
+            class="w-full px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white"
+          />
+        </div>
+
+        <!-- Files -->
+        <div class="mb-3">
+          <h4 class="text-white font-semibold mb-2">Files</h4>
+          <input
+            type="file"
+            name="files[]"
+            multiple
+            class="w-full px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white"
+          />
+        </div>
+
+        <div class="flex justify-end gap-3 mt-4">
+          <button
+            type="button"
+            class="closeBtn px-4 py-2 text-gray-400 hover:text-white"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="px-4 py-2 bg-orange-500 rounded text-black hover:bg-orange-400 transition"
+          >
+            save Resource
+          </button>
+        </div>
+      </div>
+    </form>
+
+    <script>
+      // ==============================
+      // BASIC MODAL OPEN / CLOSE LOGIC
+      // ==============================
+
+      const modalTriggers = {
+        openTaskModal: "taskModal",
+        openNoteModal: "noteModal",
+        openProjectModal: "projectModal",
+        openResourceModal: "resourceModal",
+      };
+
+      Object.entries(modalTriggers).forEach(([btnId, modalId]) => {
+        const btn = document.getElementById(btnId);
+        const modal = document.getElementById(modalId);
+        if (!btn || !modal) return;
+
+        btn.addEventListener("click", () => {
+          if (modalId === "taskModal") {
+            resetTaskModal();
+          }
+          modal.classList.remove("hidden");
+          modal.classList.add("flex");
+        });
+      });
+
+      // Close modals
+      document.querySelectorAll(".closeBtn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const modal = btn.closest(".fixed.inset-0");
+          if (modal) {
+            modal.classList.add("hidden");
+            modal.classList.remove("flex");
+          }
+        });
+      });
+
+      // Click outside modal to close
+      document.querySelectorAll(".fixed.inset-0").forEach((modal) => {
+        modal.addEventListener("click", (e) => {
+          if (e.target === modal) {
+            modal.classList.add("hidden");
+            modal.classList.remove("flex");
+          }
+        });
+      });
+
+      // Escape key closes all modals
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          document.querySelectorAll(".fixed.inset-0").forEach((modal) => {
+            modal.classList.add("hidden");
+            modal.classList.remove("flex");
+          });
+        }
+      });
+
+      // ==============================
+      // TASK MODAL FUNCTIONS
+      // ==============================
+
+      function resetTaskModal() {
+        const form = document.getElementById("taskForm");
+        form.reset();
+        document.getElementById("task_id").value = "new";
+        document.querySelector("#taskModal h3").textContent = "Create Task";
+      }
+
+      function editTask(taskData) {
+        const modal = document.getElementById("taskModal");
+        const form = document.getElementById("taskForm");
+
+        // Populate form fields
+        document.getElementById("task_id").value = taskData.id || "new";
+        form.querySelector('input[name="title"]').value = taskData.name || "";
+        form.querySelector('input[name="description"]').value =
+          taskData.description || "";
+        form.querySelector('select[name="energy"]').value =
+          taskData.energy_required || 2;
+        form.querySelector('input[name="due_date"]').value =
+          taskData.due_date || "";
+
+        modal.querySelector("h3").textContent = "Edit Task";
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+      }
+
+      // ==============================
+      // PROJECT MODAL – DYNAMIC TASKS
+      // ==============================
+
+      const addProjectTaskBtn = document.getElementById("addProjectTask");
+      const projectTasksContainer = document.getElementById(
+        "projectTasksContainer",
+      );
+
+      if (addProjectTaskBtn && projectTasksContainer) {
+        addProjectTaskBtn.addEventListener("click", () => {
+          const row = document.createElement("div");
+          row.className = "flex gap-2 items-center";
+
+          row.innerHTML = `
+        <input type="text" name="task_titles[]" placeholder="Task Name"
+          class="w-2/3 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white"/>
+        <select name="task_energy[]" class="w-1/6 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white">
+          <option value="">Energy</option>
+          <option value="LOW">LOW</option>
+          <option value="MED">MED</option>
+          <option value="HIGH">HIGH</option>
+        </select>
+        <button type="button" class="px-2 py-1 bg-red-600 rounded text-black hover:bg-red-500 remove-task-btn">
+          Remove
+        </button>
+      `;
+
+          row
+            .querySelector(".remove-task-btn")
+            .addEventListener("click", () => row.remove());
+          projectTasksContainer.appendChild(row);
+        });
+      }
+
+      // Remove empty project tasks before submit
+      const projectForm = document.querySelector("#projectModal form");
+      if (projectForm) {
+        projectForm.addEventListener("submit", () => {
+          projectForm
+            .querySelectorAll('input[name="task_titles[]"]')
+            .forEach((input) => {
+              if (!input.value.trim()) input.closest(".flex").remove();
+            });
+        });
+      }
+    </script>
+  </body>
+</html>

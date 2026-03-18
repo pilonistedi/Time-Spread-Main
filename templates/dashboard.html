@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Time Spread — Dashboard</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='output.css') }}"
+    />
+  </head>
+
+  <body class="bg-black h-screen text-gray-300 overflow-hidden">
+    <!-- Top Bar -->
+    <header
+      class="w-full px-4 py-2 flex justify-between items-center border-b border-gray-800"
+    >
+      <h2 class="text-sm font-mono text-orange-400 cursor-pointer">
+        Time Spread
+      </h2>
+
+      <div class="flex gap-4 text-sm">
+        <a
+          href="{{ url_for('groups') }}"
+          class="text-gray-400 hover:text-orange-400"
+          >Groups</a
+        >
+        <a
+          href="{{ url_for('task_manager') }}"
+          class="text-gray-400 hover:text-orange-400"
+          >Manager</a
+        >
+        <a
+          href="{{ url_for('login') }}"
+          class="text-gray-400 hover:text-orange-400"
+          >Sign out</a
+        >
+      </div>
+    </header>
+
+    <!-- Layout -->
+    <main class="h-[calc(100vh-48px)] grid grid-cols-12 gap-4 p-4">
+      <!-- LEFT -->
+      <section class="col-span-8 flex flex-col gap-4 min-h-0">
+        <!-- Current Task -->
+        <div class="bg-gray-800 rounded-md p-4 flex flex-col gap-2 relative">
+          {% if current_task %}
+          <!-- energy dot -->
+          <span
+            class="absolute top-3 right-3 w-3 h-3 rounded-full"
+            style="background-color:
+                  {% if current_task.energy_required == 1 %}#16a34a
+                  {% elif current_task.energy_required == 2 %}#f59e0b
+                  {% else %}#dc2626{% endif %};"
+          ></span>
+
+          <p class="text-xs text-gray-400 uppercase tracking-wide">
+            Current Task
+          </p>
+          <h2 class="text-orange-400 font-mono text-lg">
+            {{ current_task.name }}
+          </h2>
+          {% if current_task.description %}
+          <p class="text-sm text-gray-400 line-clamp-2">
+            {{ current_task.description }}
+          </p>
+          {% endif %}
+
+          <div class="flex justify-between items-center mt-2">
+            <p class="text-xs text-gray-500">
+              Due: {{ current_task.due_date.strftime("%Y-%m-%d") if
+              current_task.due_date else "—" }}
+            </p>
+            <div>
+              <button
+                type="button"
+                onclick="markDone({{ current_task.id }})"
+                class="text-xs bg-teal-600 hover:bg-teal-500 px-3 py-1 rounded"
+              >
+                Done
+              </button>
+
+              <button
+                onclick="openEditTaskModal(this)"
+                data-id="{{ current_task.id }}"
+                data-name="{{ current_task.name }}"
+                data-description="{{ current_task.description }}"
+                data-energy="{{ current_task.energy_required }}"
+                data-group="{{ current_task.group_id }}"
+                data-due="{{ current_task.due_date.strftime('%Y-%m-%d') if current_task.due_date else '' }}"
+                class="text-xs bg-orange-600 hover:bg-orange-500 px-3 py-1 rounded"
+              >
+                View >
+              </button>
+            </div>
+          </div>
+          {% else %}
+          <p class="text-sm text-gray-400">No active tasks.</p>
+          {% endif %}
+        </div>
+
+        <!-- Next Tasks -->
+        <div class="flex-1 bg-gray-900 rounded-md p-4 flex flex-col min-h-0">
+          <p class="text-xs text-gray-400 uppercase tracking-wide mb-3">
+            Next Up
+          </p>
+
+          <div class="flex flex-col gap-2 overflow-y-auto pr-1">
+            {% for task in next_tasks %}
+            <div
+              onclick="openEditTaskModal(this)"
+              data-id="{{ task.id }}"
+              data-name="{{ task.name }}"
+              data-description="{{ task.description }}"
+              data-energy="{{ task.energy_required }}"
+              data-group="{{ task.group_id }}"
+              data-due="{{ task.due_date.strftime('%Y-%m-%d') if task.due_date else '' }}"
+              class="bg-gray-800 rounded-md px-3 py-2 text-sm flex justify-between items-center cursor-pointer hover:bg-gray-700"
+            >
+              <span class="truncate">{{ task.name }}</span>
+              <span
+                class="w-2 h-2 rounded-full"
+                style="background-color:
+                    {% if task.energy_required == 1 %}#16a34a
+                    {% elif task.energy_required == 2 %}#f59e0b
+                    {% else %}#dc2626{% endif %};"
+              ></span>
+            </div>
+            {% endfor %} {% if not next_tasks %}
+            <p class="text-xs text-gray-500">Nothing queued.</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Progress -->
+        <div
+          class="bg-gray-800 rounded-md px-4 py-3 flex justify-between items-center"
+        >
+          <p class="text-sm font-mono text-gray-400">Energy Today</p>
+          <p class="text-lg font-mono text-orange-400">{{ energy_done }}</p>
+        </div>
+      </section>
+
+      <!-- RIGHT -->
+      <aside class="col-span-4 flex flex-col gap-4">
+        <form
+          method="GET"
+          action="{{ url_for('dashboard') }}"
+          class="bg-gray-800 rounded-md p-3 border border-gray-700 flex flex-col gap-1"
+        >
+          <label
+            for="group_id"
+            class="text-xs uppercase tracking-wide text-gray-400 mb-1"
+          >
+            Filter by Group
+          </label>
+
+          <div class="relative">
+            <select
+              id="group_id"
+              name="group_id"
+              onchange="this.form.submit()"
+              class="w-full text-sm text-gray-300 bg-gray-900 rounded-md px-3 py-2 pr-8 border border-gray-700 focus:outline-none focus:ring-1 focus:ring-orange-500 hover:border-gray-600 appearance-none cursor-pointer"
+            >
+              <option value="">All groups</option>
+              {% for group in groups %}
+              <option 
+                value="{{ group.id }}" 
+                {% if request.args.get('group_id') and request.args.get('group_id')|int == group.id %}selected{% endif %}
+              >
+                {{ group.name }}
+              </option>
+              {% endfor %}
+            </select>
+
+
+            <!-- Dropdown chevron -->
+            <span
+              class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs"
+            >
+              ▾
+            </span>
+          </div>
+        </form>
+
+
+        <!-- CURRENT ENERGY SELECTOR -->
+        <div class="bg-gray-800 rounded-md p-4 flex flex-col gap-2">
+          <p class="text-xs text-gray-400 uppercase tracking-wide">
+            Current Energy
+          </p>
+          <div class="flex gap-2">
+            <button
+              onclick="setEnergy(1)"
+              class="flex-1 py-1 rounded text-sm text-gray-300 border border-gray-700 {% if current_energy == 1 %} bg-green-600 {% endif %}"
+            >
+              Low
+            </button>
+            <button
+              onclick="setEnergy(2)"
+              class="flex-1 py-1 rounded text-sm text-gray-300 border border-gray-700 {% if current_energy == 2 %} bg-orange-600 {% endif %}"
+            >
+              Medium
+            </button>
+            <button
+              onclick="setEnergy(3)"
+              class="flex-1 py-1 rounded text-sm text-gray-300 border border-gray-700 {% if current_energy == 3 %} bg-red-600 {% endif %}"
+            >
+              High
+            </button>
+          </div>
+        </div>
+
+        <!-- Leisure Balance -->
+        <div class="bg-gray-900 rounded-md p-4 flex flex-col gap-4">
+          <p class="text-xs uppercase tracking-wide text-gray-400">
+            Leisure Unlocks
+          </p>
+
+          {% for key, item in leisure.items() %}
+          <div class="flex flex-col gap-1">
+            <div class="flex justify-between text-xs font-mono">
+              <span class="capitalize">{{ key }}</span>
+              <span>{{ item.current }} / {{ item.required }}</span>
+            </div>
+
+            <div class="w-full h-2 bg-gray-800 rounded">
+              <div
+                class="h-2 rounded"
+                style="width: {{ item.percent }}%;
+                          background-color: {{ '#16a34a' if item.unlocked else '#f59e0b' }};"
+              ></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div
+          onclick="openAddTaskModal()"
+          class="group bg-gray-800/60 border-2 border-dashed border-orange-500/40 rounded-md p-6 flex flex-col items-center justify-center cursor-pointer transition hover:border-orange-400 hover:bg-gray-800"
+        >
+          <div
+            class="w-10 h-10 flex items-center justify-center rounded-full border border-orange-500/50 text-orange-400 text-2xl mb-2"
+          >
+            +
+          </div>
+
+          <h2 class="text-sm font-mono text-orange-400 tracking-wide">
+            Add Task
+          </h2>
+
+          <p class="text-xs text-gray-500 mt-1">Quick entry</p>
+        </div>
+      </aside>
+    </main>
+    <!-- ================= TASK MODAL (ADD + EDIT) ================= -->
+
+    <!-- Backdrop -->
+    <div
+      id="taskModalBackdrop"
+      class="hidden fixed inset-0 bg-black/60 z-40"
+    ></div>
+
+    <!-- Modal -->
+    <div
+      id="taskModal"
+      class="hidden fixed inset-0 z-50 flex items-center justify-center"
+    >
+      <div
+        class="bg-gray-900 rounded-md w-full max-w-lg p-5 border border-gray-700"
+      >
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-4">
+          <h2 id="taskModalTitle" class="text-lg font-mono text-orange-400">
+            Add Task
+          </h2>
+          <button
+            onclick="closeTaskModal()"
+            class="text-gray-400 hover:text-gray-200 text-sm"
+          >
+            ✕
+          </button>
+        </div>
+
+        <!-- Form -->
+        <form method="POST" action="{{ url_for('save_task') }}">
+          <input type="hidden" name="task_id" id="taskId" value="new" />
+
+          <div class="flex flex-col gap-4">
+            <!-- Task Name -->
+            <div>
+              <label class="text-xs uppercase tracking-wide text-gray-400">
+                Task Name
+              </label>
+              <input
+                type="text"
+                name="task_name"
+                id="taskName"
+                required
+                class="w-full mt-1 px-3 py-2 rounded-md bg-gray-800 border border-gray-700 text-sm text-gray-300 focus:outline-none focus:ring-1 focus:ring-orange-500"
+              />
+            </div>
+
+            <!-- Description -->
+            <div>
+              <label class="text-xs uppercase tracking-wide text-gray-400">
+                Description
+              </label>
+              <textarea
+                name="task_description"
+                id="taskDescription"
+                rows="3"
+                class="w-full mt-1 px-3 py-2 rounded-md bg-gray-800 border border-gray-700 text-sm text-gray-300 resize-none focus:outline-none focus:ring-1 focus:ring-orange-500"
+              ></textarea>
+            </div>
+
+            <!-- Energy + Group -->
+            <div class="grid grid-cols-2 gap-3">
+              <!-- Energy -->
+              <div>
+                <label class="text-xs uppercase tracking-wide text-gray-400">
+                  Energy Required
+                </label>
+                <select
+                  name="energy_required"
+                  id="taskEnergy"
+                  class="w-full mt-1 px-3 py-2 rounded-md bg-gray-800 border border-gray-700 text-sm text-gray-300"
+                >
+                  <option value="1">Low</option>
+                  <option value="2">Medium</option>
+                  <option value="3">High</option>
+                </select>
+              </div>
+
+              <!-- Group -->
+              <div>
+                <label class="text-xs uppercase tracking-wide text-gray-400">
+                  Group
+                </label>
+                <select
+                  name="group"
+                  id="taskGroup"
+                  class="w-full mt-1 px-3 py-2 rounded-md bg-gray-800 border border-gray-700 text-sm text-gray-300"
+                >
+                  <option value="">General</option>
+                  {% for group in groups %}
+                  <option value="{{ group.id }}">{{ group.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+
+            <!-- Due Date -->
+            <div>
+              <label class="text-xs uppercase tracking-wide text-gray-400">
+                Due Date
+              </label>
+              <input
+                type="date"
+                name="due_date"
+                id="taskDueDate"
+                class="w-full mt-1 px-3 py-2 rounded-md bg-gray-800 border border-gray-700 text-sm text-gray-300"
+              />
+            </div>
+
+            <!-- Actions -->
+            <div class="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onclick="closeTaskModal()"
+                class="text-sm text-gray-400 hover:text-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                id="taskSubmitBtn"
+                class="text-sm bg-orange-600 hover:bg-orange-500 px-4 py-1.5 rounded-md"
+              >
+                Add Task
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </body>
+  <script>
+    const taskModal = document.getElementById("taskModal");
+    const taskModalBackdrop = document.getElementById("taskModalBackdrop");
+
+    function openTaskModal() {
+      taskModal.classList.remove("hidden");
+      taskModalBackdrop.classList.remove("hidden");
+      document.body.classList.add("overflow-hidden");
+    }
+
+    function closeTaskModal() {
+      taskModal.classList.add("hidden");
+      taskModalBackdrop.classList.add("hidden");
+      document.body.classList.remove("overflow-hidden");
+    }
+
+    // ---------- ADD MODE ----------
+    function openAddTaskModal() {
+      document.getElementById("taskModalTitle").textContent = "Add Task";
+      document.getElementById("taskSubmitBtn").textContent = "Add Task";
+
+      document.getElementById("taskId").value = "new";
+      document.getElementById("taskName").value = "";
+      document.getElementById("taskDescription").value = "";
+      document.getElementById("taskEnergy").value = "2";
+      document.getElementById("taskGroup").value = "";
+      document.getElementById("taskDueDate").value = "";
+
+      openTaskModal();
+    }
+
+    // ---------- EDIT MODE ----------
+    function openEditTaskModal(el) {
+      document.getElementById("taskModalTitle").textContent = "Edit Task";
+      document.getElementById("taskSubmitBtn").textContent = "Save Changes";
+
+      document.getElementById("taskId").value = el.dataset.id;
+      document.getElementById("taskName").value = el.dataset.name || "";
+      document.getElementById("taskDescription").value =
+        el.dataset.description || "";
+      document.getElementById("taskEnergy").value = el.dataset.energy || "2";
+      document.getElementById("taskGroup").value = el.dataset.group || "";
+      document.getElementById("taskDueDate").value = el.dataset.due || "";
+
+      openTaskModal();
+    }
+
+    // ---------- EXISTING ACTIONS ----------
+    function markDone(id) {
+      if (!confirm("Mark task as done?")) return;
+
+      fetch(`/tasks/mark_done/${id}`, {
+        method: "POST",
+        headers: {
+          "X-Requested-With": "XMLHttpRequest",
+        },
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error("Request failed");
+          location.reload();
+        })
+        .catch((err) => {
+          alert("Failed to mark task as done.");
+          console.error(err);
+        });
+    }
+
+    function setEnergy(level) {
+      fetch(`/set_energy/${level}`, { method: "POST" }).then(() =>
+        location.reload(),
+      );
+    }
+  </script>
+</html>

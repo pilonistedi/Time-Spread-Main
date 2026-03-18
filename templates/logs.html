@@ -1,0 +1,88 @@
+{% extends "man-base.html" %} {% block title %}Logs{% endblock %} {% block
+content %}
+
+<!-- Top Controls -->
+<div class="w-full flex justify-between space-x-2 mt-2 mb-4">
+  <div class="flex justify-center items-center">
+    <a
+      href="{{ url_for('logs') }}"
+      class="w-28 bg-gray-600 border rounded flex justify-center items-center text-orange-500 text-sm hover:bg-gray-800 transition"
+    >
+      Task Logs
+    </a>
+  </div>
+
+  <div
+    class="px-3 py-1 border border-red-600 text-gray-200 rounded hover:bg-red-600 transition text-sm cursor-pointer"
+  >
+    <button>Empty Logs</button>
+  </div>
+</div>
+
+<!-- Logs By Day -->
+<div class="w-full flex flex-col gap-6">
+  {% for day in sorted_days %}
+  <div class="w-full px-4">
+    <!-- Day Header -->
+    <div class="w-full border-b border-gray-600 mb-2">
+      <h2 class="text-sm italic text-gray-500">
+        {{ day.strftime('%A, %d %B %Y') }}
+      </h2>
+    </div>
+
+    <!-- Tasks For This Day -->
+    <div class="w-full flex flex-col gap-3">
+      {% for log in logs_by_day[day] %}
+      <div class="w-full flex justify-end">
+        <div
+          class="relative w-[70%] min-h-[60px] rounded-md bg-gray-800 text-gray-200 hover:bg-gray-700 p-2 box-border transition"
+        >
+          <!-- Top Left -->
+          <h2 class="absolute top-2 left-2 text-orange-400 text-sm font-mono">
+            {{ log.name }}
+          </h2>
+
+          <!-- Bottom Left -->
+          <form
+            method="POST"
+            action="{{ url_for('repeat_task', log_id=log.id) }}"
+            class="absolute bottom-2 left-2"
+            onsubmit="
+              return confirm(
+                'Repeat {{log.name}}?'
+              );
+            "
+          >
+            <button
+              type="submit"
+              class="text-[10px] text-gray-400 hover:text-orange-400 transition text-sm"
+              title="Repeat task"
+            >
+              ↻ repeat
+            </button>
+          </form>
+
+          <!-- Top Right (status dot = completed) -->
+          <span
+            class="absolute top-2 right-2 w-3 h-3 rounded-full"
+            style="background-color:
+            {% if log.energy_required == 1 %}#16a34a
+            {% elif log.energy_required == 2 %}#f59e0b
+            {% else %}#dc2626{% endif %};"
+          ></span>
+
+          <!-- Bottom Right -->
+          <p class="absolute bottom-2 right-2 text-xs text-gray-400">
+            {{ log.project.title if log.project else "No Project" }}
+          </p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% else %}
+  <p class="text-center text-gray-500 italic mt-8">No logs yet.</p>
+  {% endfor %}
+</div>
+
+{% endblock %}
